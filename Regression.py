@@ -4,6 +4,26 @@ import math
 import logging
 logging.basicConfig(level=logging.DEBUG)
 import matplotlib.pyplot as plt
+import pandas as pd
+import os
+
+# Writing data into attribute files
+def data_loader(dataset_path):
+    df = pd.read_table(dataset_path, header=None)
+    X = df.iloc[:, 0:-1]
+    y = df.iloc[:, -1]
+    data_folder = './regression/batch_data/'
+
+    m = X.shape[0] # number of instances
+    n = X.shape[1] # number of attributes
+
+    if not os.path.exists(data_folder): 
+        os.makedirs(data_folder)
+
+    for i in range(n):
+        X[i].to_csv('{}/x{}.txt'.format(data_folder, i+1), header=False, index=False)
+
+    y.to_csv('{}/y1.txt'.format(data_folder), header=False, index=False)
 
 #Network parameters
 n_hidden1 = 10
