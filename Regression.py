@@ -91,6 +91,8 @@ batch_y1=np.loadtxt(data_folder + 'y1.txt')
 label=batch_y1#+1e-50-1e-50
 batch_x=np.column_stack((batch_x1, batch_x2, batch_x3, batch_x4, batch_x5))
 batch_y=np.array(batch_y1).reshape(-1, 1)
+print('batch_y:')
+print(batch_y)
 # print(batch_x, batch_x.shape)
 # batch_x = np.transpose(batch_x)
 # batch_y = np.transpose(batch_y)

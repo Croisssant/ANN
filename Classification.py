@@ -4,12 +4,13 @@ import math
 import logging
 logging.basicConfig(level=logging.DEBUG)
 import matplotlib.pyplot as plt
+import pandas as pd
 
 #Network parameters
 n_hidden1 = 10
 n_hidden2 = 10
-n_input = 2
-n_output = 2
+n_input = 13
+n_output = 1 # Still finding a way to change output node to 3
 
 #Learning parameters
 learning_constant = 0.2
@@ -54,19 +55,41 @@ optimizer = tf.train.GradientDescentOptimizer(learning_constant).minimize(loss_o
 #Initializing the variables
 init = tf.global_variables_initializer()
 
-batch_x1=np.loadtxt('x1.txt')
-batch_x2=np.loadtxt('x2.txt')
-batch_y1=np.loadtxt('y1.txt')
-batch_y2=np.loadtxt('y2.txt')
-label=batch_y2#+1e-50-1e-50
-batch_x=np.column_stack((batch_x1, batch_x2))
-batch_y=np.column_stack((batch_y1, batch_y2))
-batch_x_train=batch_x[:,0:599]
-batch_y_train=batch_y[:,0:599]
-batch_x_test=batch_x[:,600:1000]
-batch_y_test=batch_y[:,600:1000]
-label_train=label[0:599]
-label_test=label[600:1000]
+# ================= Before Normalization (Works) =======================
+# Loading data 
+df = pd.read_csv('./Data/Wine/refined_data.csv')
+df = df.sample(frac=1) # Randomly shuffles each row of data
+
+batch_y = np.array(df.iloc[:, -1]).reshape(-1,1)
+
+batch_x_train = df.iloc[0:100, 0:-1]
+batch_y_train = batch_y[0:100]
+
+batch_x_test = df.iloc[101:, 0:-1]
+batch_y_test = batch_y[101:]
+
+# ================== After Normalization (Doesn't work yet) =======================
+# TypeError: 'DataFrame' objects are mutable, thus they cannot be hashed
+
+df = pd.read_csv('./Data/Wine/refined_data.csv')
+df = df.sample(frac=1) # Randomly shuffles each row of data
+X = df.iloc[:, 0:-1]
+
+m = X.shape[0] # number of instances
+n = X.shape[1] # number of attributes
+
+# Normalization steps
+mu = np.mean(X, axis=0)
+sigma = np.std(X, axis=0)
+batch_x = (X-mu)/sigma
+batch_y = np.array(df.iloc[:, -1]).reshape(-1,1) # I think need to change reshape to (-1, 3) if you want to add the node to 3
+
+batch_x_train = batch_x.iloc[:100,:]
+batch_y_train = batch_y[0:100]
+
+batch_x_test = batch_x.iloc[101:,:]
+batch_y_test = batch_y[101:]
+
 
 with tf.Session() as sess:
     sess.run(init)
@@ -81,8 +104,7 @@ with tf.Session() as sess:
     # Test model
     pred = (neural_network) # Apply softmax to logits
     accuracy=tf.keras.losses.MSE(pred,Y)
-    print("Accuracy:", accuracy.eval({X: batch_x_train, Y:
-    batch_y_train}))
+    print("Accuracy:", accuracy.eval({X: batch_x_train, Y: batch_y_train}))
     #tf.keras.evaluate(pred,batch_x)
 
     print("Prediction:", pred.eval({X: batch_x_train}))
@@ -92,7 +114,7 @@ with tf.Session() as sess:
     plt.show()
 
     estimated_class=tf.argmax(pred, 1)#+1e-50-1e-50
-    correct_prediction1 = tf.equal(tf.argmax(pred, 1),label)
+    correct_prediction1 = tf.equal(tf.argmax(pred, 1),batch_y_test)
     accuracy1 = tf.reduce_mean(tf.cast(correct_prediction1, tf.float32))
     
     print(accuracy1.eval({X: batch_x}))
