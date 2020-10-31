@@ -12,10 +12,14 @@ def data_loader(dataset_path):
     df = pd.read_table(dataset_path, header=None)
     X = df.iloc[:, 0:-1]
     y = df.iloc[:, -1]
-    data_folder = './regression/batch_data/'
+    data_folder = './batch_data/regression/'
 
     m = X.shape[0] # number of instances
     n = X.shape[1] # number of attributes
+
+    mu = np.mean(X, axis=0)
+    sigma = np.std(X, axis=0)
+    X = (X-mu)/sigma
 
     if not os.path.exists(data_folder): 
         os.makedirs(data_folder)
@@ -25,15 +29,17 @@ def data_loader(dataset_path):
 
     y.to_csv('{}/y1.txt'.format(data_folder), header=False, index=False)
 
+    return data_folder
+
 #Network parameters
 n_hidden1 = 10
-n_hidden2 = 10
-n_input = 2
-n_output = 2
+n_hidden2 = 5
+n_input = 5
+n_output = 1
 
 #Learning parameters
-learning_constant = 0.2
-number_epochs = 1000
+learning_constant = 0.025
+number_epochs = 4000
 batch_size = 1000
 
 #Defining the input and the output
@@ -74,21 +80,31 @@ optimizer = tf.train.GradientDescentOptimizer(learning_constant).minimize(loss_o
 #Initializing the variables
 init = tf.global_variables_initializer()
 
-batch_x1=np.loadtxt('x1.txt')
-batch_x2=np.loadtxt('x2.txt')
-batch_y1=np.loadtxt('y1.txt')
-batch_y2=np.loadtxt('y2.txt')
-label=batch_y2#+1e-50-1e-50
-batch_x=np.column_stack((batch_x1, batch_x2))
-batch_y=np.column_stack((batch_y1, batch_y2))
-batch_x_train=batch_x[:,0:599]
-batch_y_train=batch_y[:,0:599]
-batch_x_test=batch_x[:,600:1000]
-batch_y_test=batch_y[:,600:1000]
-label_train=label[0:599]
-label_test=label[600:1000]
+data_folder = data_loader('./Data/Airfoil_self_noise/airfoil_self_noise.dat')
+batch_x1=np.loadtxt(data_folder + 'x1.txt')
+batch_x2=np.loadtxt(data_folder + 'x2.txt')
+batch_x3=np.loadtxt(data_folder + 'x3.txt')
+batch_x4=np.loadtxt(data_folder + 'x4.txt')
+batch_x5=np.loadtxt(data_folder + 'x5.txt')
+batch_y1=np.loadtxt(data_folder + 'y1.txt')
+
+label=batch_y1#+1e-50-1e-50
+batch_x=np.column_stack((batch_x1, batch_x2, batch_x3, batch_x4, batch_x5))
+batch_y=np.array(batch_y1).reshape(-1, 1)
+# print(batch_x, batch_x.shape)
+# batch_x = np.transpose(batch_x)
+# batch_y = np.transpose(batch_y)
+
+batch_x_train=batch_x[0:1000, :]
+batch_y_train=batch_y[0:1000, :]
+batch_x_test=batch_x[1000:, :]
+batch_y_test=batch_y[1000:, :]
+
+label_train=label[0:1000]
+label_test=label[1000:]
 
 with tf.Session() as sess:
+    pred = (neural_network) # Apply softmax to logits
     sess.run(init)
     #Training epoch
     for epoch in range(number_epochs):
@@ -96,23 +112,29 @@ with tf.Session() as sess:
         sess.run(optimizer, feed_dict={X: batch_x_train, Y: batch_y_train})
         #Display the epoch
         if epoch % 100 == 0:
-            print("Epoch:", '%d' % (epoch))
+            print("Epoch:", '%d' % (epoch), end='; ')
+            accuracy=tf.losses.mean_squared_error(Y,pred, reduction=tf.losses.Reduction.SUM_OVER_BATCH_SIZE)
+            print("Training Loss:", accuracy.eval({X: batch_x_train, Y:
+                    batch_y_train}), end='; ')
+            print("Test Loss:", accuracy.eval({X: batch_x_test, Y:
+                    batch_y_test}))
 
     # Test model
-    pred = (neural_network) # Apply softmax to logits
-    accuracy=tf.keras.losses.MSE(pred,Y)
-    print("Accuracy:", accuracy.eval({X: batch_x_train, Y:
-    batch_y_train}))
-    #tf.keras.evaluate(pred,batch_x)
+    # print("Prediction:", pred.eval({X: batch_x_train}))
+    training_output=pred.eval({X: batch_x_train})
+    plt.plot(batch_y_train[0:15], 'ro', training_output[0:15], 'x')
+    plt.ylabel('Labels')
+    plt.title('Comparison of the prediction of the first 15 training set examples')
+    plt.show()
 
-    print("Prediction:", pred.eval({X: batch_x_train}))
-    output=neural_network.eval({X: batch_x_train})
-    plt.plot(batch_y_train[0:10], 'ro', output[0:10], 'bo')
-    plt.ylabel('some numbers')
+    test_output=pred.eval({X: batch_x_test})
+    plt.plot(batch_y_test[0:15], 'ro', test_output[0:15], 'x')
+    plt.ylabel('Labels')
+    plt.title('Comparison of the prediction of the first 15 test set examples')
     plt.show()
 
     estimated_class=tf.argmax(pred, 1)#+1e-50-1e-50
-    correct_prediction1 = tf.equal(tf.argmax(pred, 1),label)
+    correct_prediction1 = tf.equal(pred, label)
     accuracy1 = tf.reduce_mean(tf.cast(correct_prediction1, tf.float32))
     
     print(accuracy1.eval({X: batch_x}))
