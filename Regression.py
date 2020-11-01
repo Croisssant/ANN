@@ -14,6 +14,9 @@ def data_loader(dataset_path):
     y = df.iloc[:, -1]
     data_folder = './batch_data/regression/'
 
+    if os.path.exists(data_folder):
+        return data_folder
+
     m = X.shape[0] # number of instances
     n = X.shape[1] # number of attributes
 
@@ -65,7 +68,7 @@ def multilayer_perceptron(input_d):
     #Task of neurons of second hidden layer
     layer_2 = tf.nn.sigmoid(tf.add(tf.matmul(layer_1, w2), b2))
     #Task of neurons of output layer
-    out_layer = tf.add(tf.matmul(layer_2, w3),b3)
+    out_layer = tf.add(tf.matmul(layer_2, w3), b3) 
 
     return out_layer
 
@@ -91,11 +94,6 @@ batch_y1=np.loadtxt(data_folder + 'y1.txt')
 label=batch_y1#+1e-50-1e-50
 batch_x=np.column_stack((batch_x1, batch_x2, batch_x3, batch_x4, batch_x5))
 batch_y=np.array(batch_y1).reshape(-1, 1)
-print('batch_y:')
-print(batch_y)
-# print(batch_x, batch_x.shape)
-# batch_x = np.transpose(batch_x)
-# batch_y = np.transpose(batch_y)
 
 batch_x_train=batch_x[0:1000, :]
 batch_y_train=batch_y[0:1000, :]

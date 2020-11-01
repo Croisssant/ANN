@@ -5,6 +5,35 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 import matplotlib.pyplot as plt
 import pandas as pd
+import os
+
+
+def data_loader(dataset_path):
+    df = pd.read_csv(dataset_path)
+    # df = df.sample(frac=1).reset_index(drop=True)
+    X = df.iloc[:, 0:-1]
+    y = df.iloc[:, -1]
+    data_folder = './batch_data/classification/'
+
+    if os.path.exists(data_folder):
+        return data_folder
+
+    m = X.shape[0] # number of instances
+    n = X.shape[1] # number of attributes
+
+    mu = np.mean(X, axis=0)
+    sigma = np.std(X, axis=0)
+    X = (X-mu)/sigma
+
+    if not os.path.exists(data_folder): 
+        os.makedirs(data_folder)
+
+    for i in range(n):
+        X.iloc[:, i].to_csv('{}/x{}.txt'.format(data_folder, i+1), header=False, index=False)
+
+    y.to_csv('{}/y1.txt'.format(data_folder), header=False, index=False)
+
+    return data_folder
 
 #Network parameters
 n_hidden1 = 10
@@ -55,40 +84,30 @@ optimizer = tf.train.GradientDescentOptimizer(learning_constant).minimize(loss_o
 #Initializing the variables
 init = tf.global_variables_initializer()
 
-# ================= Before Normalization (Works) =======================
-# Loading data 
-df = pd.read_csv('./Data/Wine/refined_data.csv')
-df = df.sample(frac=1) # Randomly shuffles each row of data
+data_folder = data_loader('./Data/Wine/refined_data.csv')
+batch_x1=np.loadtxt(data_folder + 'x1.txt')
+batch_x2=np.loadtxt(data_folder + 'x2.txt')
+batch_x3=np.loadtxt(data_folder + 'x3.txt')
+batch_x4=np.loadtxt(data_folder + 'x4.txt')
+batch_x5=np.loadtxt(data_folder + 'x5.txt')
+batch_x6=np.loadtxt(data_folder + 'x6.txt')
+batch_x7=np.loadtxt(data_folder + 'x7.txt')
+batch_x8=np.loadtxt(data_folder + 'x8.txt')
+batch_x9=np.loadtxt(data_folder + 'x9.txt')
+batch_x10=np.loadtxt(data_folder + 'x10.txt')
+batch_x11=np.loadtxt(data_folder + 'x11.txt')
+batch_x12=np.loadtxt(data_folder + 'x12.txt')
+batch_x13=np.loadtxt(data_folder + 'x13.txt')
+batch_y1=np.loadtxt(data_folder + 'y1.txt')
 
-batch_y = np.array(df.iloc[:, -1]).reshape(-1,1)
+label=batch_y1#+1e-50-1e-50
+batch_x=np.column_stack((batch_x1, batch_x2, batch_x3, batch_x4, batch_x5, batch_x6, batch_x7, batch_x8, batch_x9, batch_x10, batch_x11, batch_x12, batch_x13))
+batch_y=np.array(batch_y1).reshape(-1, 1)
 
-batch_x_train = df.iloc[0:100, 0:-1]
-batch_y_train = batch_y[0:100]
-
-batch_x_test = df.iloc[101:, 0:-1]
-batch_y_test = batch_y[101:]
-
-# ================== After Normalization (Doesn't work yet) =======================
-# TypeError: 'DataFrame' objects are mutable, thus they cannot be hashed
-
-df = pd.read_csv('./Data/Wine/refined_data.csv')
-df = df.sample(frac=1) # Randomly shuffles each row of data
-X = df.iloc[:, 0:-1]
-
-m = X.shape[0] # number of instances
-n = X.shape[1] # number of attributes
-
-# Normalization steps
-mu = np.mean(X, axis=0)
-sigma = np.std(X, axis=0)
-batch_x = (X-mu)/sigma
-batch_y = np.array(df.iloc[:, -1]).reshape(-1,1) # I think need to change reshape to (-1, 3) if you want to add the node to 3
-
-batch_x_train = batch_x.iloc[:100,:]
-batch_y_train = batch_y[0:100]
-
-batch_x_test = batch_x.iloc[101:,:]
-batch_y_test = batch_y[101:]
+batch_x_train=batch_x[0:125, :]
+batch_y_train=batch_y[0:125, :]
+batch_x_test=batch_x[125:, :]
+batch_y_test=batch_y[125:, :]
 
 
 with tf.Session() as sess:
@@ -109,7 +128,7 @@ with tf.Session() as sess:
 
     print("Prediction:", pred.eval({X: batch_x_train}))
     output=neural_network.eval({X: batch_x_train})
-    plt.plot(batch_y_train[0:10], 'ro', output[0:10], 'bo')
+    plt.plot(batch_y_train[0:10], 'ro', output[0:10], 'x')
     plt.ylabel('some numbers')
     plt.show()
 
