@@ -5,14 +5,15 @@ import logging
 logging.basicConfig(level=logging.DEBUG)
 import matplotlib.pyplot as plt
 import pandas as pd
+from sklearn.preprocessing import LabelBinarizer
 import os
 
 
 def data_loader(dataset_path):
     df = pd.read_csv(dataset_path)
-    # df = df.sample(frac=1).reset_index(drop=True)
+    df = df.sample(frac=1).reset_index(drop=True)
     X = df.iloc[:, 0:-1]
-    y = df.iloc[:, -1]
+    y = LabelBinarizer().fit_transform(df['Class']) # create one hot encoded class labels
     data_folder = './batch_data/classification/'
 
     if os.path.exists(data_folder):
@@ -31,18 +32,18 @@ def data_loader(dataset_path):
     for i in range(n):
         X.iloc[:, i].to_csv('{}/x{}.txt'.format(data_folder, i+1), header=False, index=False)
 
-    y.to_csv('{}/y1.txt'.format(data_folder), header=False, index=False)
+    np.savetxt(fname=data_folder+'y1.txt', X=y) # export one hot encoded labels
 
     return data_folder
 
 #Network parameters
 n_hidden1 = 10
-n_hidden2 = 10
+n_hidden2 = 5
 n_input = 13
-n_output = 1 # Still finding a way to change output node to 3
+n_output = 3 # Still finding a way to change output node to 3
 
 #Learning parameters
-learning_constant = 0.2
+learning_constant = 0.55
 number_epochs = 1000
 batch_size = 1000
 
@@ -69,7 +70,7 @@ def multilayer_perceptron(input_d):
     #Task of neurons of second hidden layer
     layer_2 = tf.nn.sigmoid(tf.add(tf.matmul(layer_1, w2), b2))
     #Task of neurons of output layer
-    out_layer = tf.add(tf.matmul(layer_2, w3),b3)
+    out_layer = tf.nn.softmax(tf.add(tf.matmul(layer_2, w3),b3))
 
     return out_layer
 
@@ -102,10 +103,12 @@ batch_y1=np.loadtxt(data_folder + 'y1.txt')
 
 label=batch_y1#+1e-50-1e-50
 batch_x=np.column_stack((batch_x1, batch_x2, batch_x3, batch_x4, batch_x5, batch_x6, batch_x7, batch_x8, batch_x9, batch_x10, batch_x11, batch_x12, batch_x13))
-batch_y=np.array(batch_y1).reshape(-1, 1)
+batch_y=np.array(batch_y1)
+# batch_y=np.column_stack((batch_y1, batch_y2, batch_y3))
 
 batch_x_train=batch_x[0:125, :]
 batch_y_train=batch_y[0:125, :]
+
 batch_x_test=batch_x[125:, :]
 batch_y_test=batch_y[125:, :]
 
@@ -127,13 +130,20 @@ with tf.Session() as sess:
     #tf.keras.evaluate(pred,batch_x)
 
     print("Prediction:", pred.eval({X: batch_x_train}))
-    output=neural_network.eval({X: batch_x_train})
-    plt.plot(batch_y_train[0:10], 'ro', output[0:10], 'x')
-    plt.ylabel('some numbers')
+    train_output=neural_network.eval({X: batch_x_train})
+    plt.plot(np.argmax(batch_y_train[0:25], 1) + 1, 'ro', np.argmax(train_output[0:25], 1) + 1, 'x') 
+    plt.ylabel('Class')
+    plt.title('Comparison of the prediction of the first 25 training set examples')
+    plt.show()
+
+    test_output=neural_network.eval({X: batch_x_test})
+    plt.plot(np.argmax(batch_y_test[0:25], 1) + 1, 'ro', np.argmax(test_output[0:25], 1) + 1, 'x') 
+    plt.ylabel('Class')
+    plt.title('Comparison of the prediction of the first 25 test set examples')
     plt.show()
 
     estimated_class=tf.argmax(pred, 1)#+1e-50-1e-50
-    correct_prediction1 = tf.equal(tf.argmax(pred, 1),batch_y_test)
+    correct_prediction1 = tf.equal(tf.argmax(pred, 1), tf.argmax(label, 1))
     accuracy1 = tf.reduce_mean(tf.cast(correct_prediction1, tf.float32))
     
-    print(accuracy1.eval({X: batch_x}))
+    print("Accuracy on test set: {}".format(accuracy1.eval({X: batch_x})))
