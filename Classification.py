@@ -1,8 +1,8 @@
 import numpy as np
 import tensorflow as tf
 import math
-import logging
-logging.basicConfig(level=logging.DEBUG)
+# import logging
+# logging.basicConfig(level=logging.DEBUG)
 import matplotlib.pyplot as plt
 import pandas as pd
 from sklearn.preprocessing import LabelBinarizer
@@ -43,8 +43,8 @@ n_input = 13
 n_output = 3 # Still finding a way to change output node to 3
 
 #Learning parameters
-learning_constant = 0.55
-number_epochs = 1000
+learning_constant = 0.90
+number_epochs = 10
 batch_size = 1000
 
 #Defining the input and the output
@@ -112,38 +112,85 @@ batch_y_train=batch_y[0:125, :]
 batch_x_test=batch_x[125:, :]
 batch_y_test=batch_y[125:, :]
 
+every_accuracy = []
 
-with tf.Session() as sess:
-    sess.run(init)
-    #Training epoch
-    for epoch in range(number_epochs):
+print('========== Please select an option ==========')
+print('0: No Validation')
+print('1: 10-Fold Cross Validation')
 
-        sess.run(optimizer, feed_dict={X: batch_x_train, Y: batch_y_train})
-        #Display the epoch
-        if epoch % 100 == 0:
-            print("Epoch:", '%d' % (epoch))
+ans = int(input())
 
-    # Test model
-    pred = (neural_network) # Apply softmax to logits
-    accuracy=tf.keras.losses.MSE(pred,Y)
-    print("Accuracy:", accuracy.eval({X: batch_x_train, Y: batch_y_train}))
-    #tf.keras.evaluate(pred,batch_x)
+if (ans == 1):
+    with tf.Session() as sess:
+        pred = (neural_network) # Apply softmax to logits
+        sess.run(init)
+        #Training epoch
+        for epoch in range(number_epochs):
 
-    print("Prediction:", pred.eval({X: batch_x_train}))
-    train_output=neural_network.eval({X: batch_x_train})
-    plt.plot(np.argmax(batch_y_train[0:25], 1) + 1, 'ro', np.argmax(train_output[0:25], 1) + 1, 'x') 
-    plt.ylabel('Class')
-    plt.title('Comparison of the prediction of the first 25 training set examples')
-    plt.show()
+            within_accuracy = []
+            for i in range(10):
+                batch_x_alpha = batch_x
+                batch_y_alpha = batch_y
+                l = 0 + (i * 17)
+                j = 17 + (i * 17)
+                testing_fold_x = batch_x[l:j, :]
+                testing_fold_y = batch_y[l:j, :]
 
-    test_output=neural_network.eval({X: batch_x_test})
-    plt.plot(np.argmax(batch_y_test[0:25], 1) + 1, 'ro', np.argmax(test_output[0:25], 1) + 1, 'x') 
-    plt.ylabel('Class')
-    plt.title('Comparison of the prediction of the first 25 test set examples')
-    plt.show()
+                if i == 9:
+                    testing_fold_x = batch_x[l:, :]
+                    testing_fold_y = batch_y[l:, :]
 
-    estimated_class=tf.argmax(pred, 1)#+1e-50-1e-50
-    correct_prediction1 = tf.equal(tf.argmax(pred, 1), tf.argmax(label, 1))
-    accuracy1 = tf.reduce_mean(tf.cast(correct_prediction1, tf.float32))
+                training_fold_x = np.delete(batch_x_alpha, slice(l,j), axis=0)
+                training_fold_y = np.delete(batch_y_alpha, slice(l,j), axis=0)
+            
+                sess.run(optimizer, feed_dict={X:training_fold_x , Y: training_fold_y})
+                
+                estimated_class=tf.argmax(pred, 1)#+1e-50-1e-50
+                correct_prediction1 = tf.equal(tf.argmax(pred, 1), tf.argmax(testing_fold_y, 1))
+                accuracy1 = tf.reduce_mean(tf.cast(correct_prediction1, tf.float32))
+                
+                print("Accuracy within fold: {}".format(accuracy1.eval({X: testing_fold_x})))
+                within_accuracy.append(accuracy1.eval({X: testing_fold_x}))
+            
+            print('Mean accuracy of this fold: ', np.mean(within_accuracy))
+            every_accuracy.append(np.mean(within_accuracy))
+        print('Average accuracy of all epoch folds: ', np.mean(every_accuracy))
+  
+elif (ans == 0):
+    with tf.Session() as sess:
+        sess.run(init)
+        #Training epoch
+        for epoch in range(number_epochs):
+
+            sess.run(optimizer, feed_dict={X: batch_x_train, Y: batch_y_train})
+            #Display the epoch
+            if epoch % 100 == 0:
+                print("Epoch:", '%d' % (epoch))
+
+        # Test model
+        pred = (neural_network) # Apply softmax to logits
+        accuracy=tf.keras.losses.MSE(pred,Y)
+        print("Accuracy:", accuracy.eval({X: batch_x_train, Y: batch_y_train}))
+        #tf.keras.evaluate(pred,batch_x)
+
+        print("Prediction:", pred.eval({X: batch_x_train}))
+        train_output=neural_network.eval({X: batch_x_train})
+        plt.plot(np.argmax(batch_y_train[0:25], 1) + 1, 'ro', np.argmax(train_output[0:25], 1) + 1, 'x') 
+        plt.ylabel('Class')
+        plt.title('Comparison of the prediction of the first 25 training set examples')
+        plt.show()
+
+        test_output=neural_network.eval({X: batch_x_test})
+        plt.plot(np.argmax(batch_y_test[0:25], 1) + 1, 'ro', np.argmax(test_output[0:25], 1) + 1, 'x') 
+        plt.ylabel('Class')
+        plt.title('Comparison of the prediction of the first 25 test set examples')
+        plt.show()
+
+        estimated_class=tf.argmax(pred, 1)#+1e-50-1e-50
+        correct_prediction1 = tf.equal(tf.argmax(pred, 1), tf.argmax(label, 1))
+        accuracy1 = tf.reduce_mean(tf.cast(correct_prediction1, tf.float32))
+        
+        print("Accuracy on test set: {}".format(accuracy1.eval({X: batch_x})))
+else:
+    print('Please select a valid option')
     
-    print("Accuracy on test set: {}".format(accuracy1.eval({X: batch_x})))
