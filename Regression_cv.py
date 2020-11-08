@@ -43,15 +43,12 @@ n_output = 1
 #Learning parameters
 learning_constant = 0.025
 number_epochs = 4000
-batch_size = 1000
-num_eval = 0
+batch_size = 1500
 
 #Defining the input and the output
 X = tf.placeholder("float", [None, n_input])
 Y = tf.placeholder("float", [None, n_output])
-
 #DEFINING WEIGHTS AND BIASES
-
 #Biases first hidden layer
 b1 = tf.Variable(tf.random_normal([n_hidden1]))
 #Biases second hidden layer
@@ -80,11 +77,8 @@ def multilayer_perceptron(input_d):
 neural_network = multilayer_perceptron(X)
 
 #Define loss and optimizer
-loss_op = tf.reduce_mean(tf.math.squared_difference(Y,neural_network))
-#loss_op = tf.reduce_mean(abs(Y - neural_network))
-#loss_op = tf.reduce_mean(100 * abs(Y - neural_network) / Y)
-#loss_op = tf.reduce_mean(square(log(y_true + 1.) - log(y_pred + 1.)))
-#oss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=neural_network,labels=Y))
+loss_op = tf.reduce_mean(tf.math.squared_difference(neural_network,Y))
+#loss_op = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits=neural_network,labels=Y))
 optimizer = tf.train.GradientDescentOptimizer(learning_constant).minimize(loss_op)
 
 #Initializing the variables
@@ -98,48 +92,91 @@ batch_x4=np.loadtxt(data_folder + 'x4.txt')
 batch_x5=np.loadtxt(data_folder + 'x5.txt')
 batch_y1=np.loadtxt(data_folder + 'y1.txt')
 
-
 label=batch_y1#+1e-50-1e-50
 batch_x=np.column_stack((batch_x1, batch_x2, batch_x3, batch_x4, batch_x5))
 batch_y=np.array(batch_y1).reshape(-1, 1)
 
-#plt.plot(batch_x[0:100,:],batch_y[0:100], 'ro')
-#plt.plot(batch_y, 'ro')
-#plt.show()
+batch_x=batch_x[0:1500, :]
+batch_y=batch_y[0:1500, :]
 
-batch_x_train=batch_x[0:1000, :]
-batch_y_train=batch_y[0:1000, :]
-batch_x_test=batch_x[1000:, :]
-batch_y_test=batch_y[1000:, :]
+num_folds = 10
+fold_range = int(len(batch_x)/num_folds)
+
+batch_x_fold = {}
+batch_y_fold = {}
+batch_x_train = []
+batch_y_train = []
+batch_x_test = []
+batch_y_test = []
+sum_test_accuracy = 0 #used to calculate average test accuracy
+
+for fold in range(num_folds):
+    batch_x_fold[fold] = batch_x[fold*fold_range:(fold+1)*fold_range,:]
+    batch_y_fold[fold] = batch_y[fold*fold_range:(fold+1)*fold_range,:]
+    #print(batch_x_fold.keys())
+
+
+def x_distribute(d, keys):
+    for i,k in d.items():
+        if i != keys:
+            batch_x_train.extend(d[i])
+        else:
+            batch_x_test.extend(d[i])
+    return batch_x_train, batch_x_test
+
+def y_distribute(d, keys):
+    for i,k in d.items():
+        if i != keys:
+            batch_y_train.extend(d[i])
+        else:
+            batch_y_test.extend(d[i])
+    return batch_y_train, batch_y_test
 
 with tf.Session() as sess:
-
-    pred = (neural_network) # Apply softmax to logits
-    sess.run(init)
-
-    #Training epoch
-    for epoch in range(number_epochs):
-        sess.run(optimizer, feed_dict={X: batch_x_train, Y: batch_y_train})
-        num_eval = num_eval + 1    
+    for i, k in enumerate(batch_x_fold.items()):
         
-    # Test model
-    # print("Prediction:", pred.eval({X: batch_x_train}))
-    training_output=pred.eval({X: batch_x_train})
+        pred = (neural_network) # Apply softmax to logits
+        sess.run(init)
 
-    plt.plot(batch_y_train[0:500], 'ro', training_output[0:500], 'x')
-    plt.ylabel('Labels')
-    plt.title('Comparison of the prediction of the first 15 training set examples')
-    plt.show()
+        batch_x_train, batch_x_test = x_distribute(batch_x_fold,i)
+        batch_y_train, batch_y_test = y_distribute(batch_y_fold,i)
+        print("Test fold = ", i)
+        batch_y_train = np.array(batch_y_train).reshape(-1,1)
+        batch_y_test = np.array(batch_y_test).reshape(-1,1)
 
-    test_output=pred.eval({X: batch_x_test})
+        # print(len(batch_y_test))
+        # print(len(batch_y_train))
 
-    plt.plot(batch_y_test, 'ro', test_output, 'x')
-    plt.ylabel('Labels')
-    plt.title('Comparison of the prediction of the first 15 test set examples')
-    plt.show()
+        #Training epoch
+        for epoch in range(number_epochs):
+            sess.run(optimizer, feed_dict={X: batch_x_train, Y: batch_y_train})
+        
+        # Test model
+        # print("Prediction:", pred.eval({X: batch_x_train}))
+        training_output=pred.eval({X: batch_x_train})
 
-    test_accuracy=tf.losses.mean_squared_error(batch_y_test,test_output, reduction=tf.losses.Reduction.SUM_OVER_BATCH_SIZE)
-    print("root test accuracy: ", math.sqrt(test_accuracy.eval()))
-    print("num of evaluation: ", num_eval)
+        plt.plot(batch_y_train[0:15], 'ro', training_output[0:15], 'x')
+        plt.ylabel('Labels')
+        plt.title('Comparison of the prediction of the first 15 training set examples')
+        #plt.show()
 
+        test_output=pred.eval({X: batch_x_test})
+        accuracy1=tf.losses.mean_squared_error(batch_y_test,test_output, reduction=tf.losses.Reduction.SUM_OVER_BATCH_SIZE)
+        test_accuracy = math.sqrt(accuracy1.eval())
+        sum_test_accuracy = sum_test_accuracy + test_accuracy
+        print("root test accuracy: ", test_accuracy)
+
+        plt.plot(batch_y_test[0:100], 'ro', test_output[0:100], 'x')
+        plt.ylabel('Labels')
+        plt.title('Comparison of the prediction of the first 15 test set examples')
+        plt.show()
+
+        batch_x_train = []
+        batch_x_test = []
+        batch_y_train = []
+        batch_y_test = []
+
+
+    # print average test accuracy
+    print("Averaged root test accuracy for ", num_folds, " folds: ", sum_test_accuracy/num_folds)
 
