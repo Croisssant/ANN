@@ -36,15 +36,14 @@ def data_loader(dataset_path):
 
 #Network parameters
 n_hidden1 = 10
-n_hidden2 = 5
+n_hidden2 = 10
 n_input = 5
 n_output = 1
 
 #Learning parameters
-learning_constant = 0.025
-number_epochs = 4000
-batch_size = 1000
-num_eval = 0
+learning_constant = 0.015
+number_epochs = 5500
+batch_size = 1150
 
 #Defining the input and the output
 X = tf.placeholder("float", [None, n_input])
@@ -103,14 +102,16 @@ label=batch_y1#+1e-50-1e-50
 batch_x=np.column_stack((batch_x1, batch_x2, batch_x3, batch_x4, batch_x5))
 batch_y=np.array(batch_y1).reshape(-1, 1)
 
-#plt.plot(batch_x[0:100,:],batch_y[0:100], 'ro')
-#plt.plot(batch_y, 'ro')
-#plt.show()
+batch_x_train=batch_x[0:batch_size, :]
+batch_y_train=batch_y[0:batch_size, :]
+batch_x_test=batch_x[batch_size:, :]
+batch_y_test=batch_y[batch_size:, :]
 
-batch_x_train=batch_x[0:1000, :]
-batch_y_train=batch_y[0:1000, :]
-batch_x_test=batch_x[1000:, :]
-batch_y_test=batch_y[1000:, :]
+label_train=label[0:batch_size]
+label_test=label[batch_size:]
+
+train_hist = []
+test_hist = []
 
 with tf.Session() as sess:
 
@@ -120,26 +121,44 @@ with tf.Session() as sess:
     #Training epoch
     for epoch in range(number_epochs):
         sess.run(optimizer, feed_dict={X: batch_x_train, Y: batch_y_train})
-        num_eval = num_eval + 1    
-        
+        #Display the epoch
+        if epoch % 100 == 0:
+            print("Epoch:", '%d' % (epoch), end='; ')
+            accuracy=tf.losses.mean_squared_error(Y,pred, reduction=tf.losses.Reduction.SUM_OVER_BATCH_SIZE)
+            train_loss = accuracy.eval({X: batch_x_train, Y:batch_y_train})
+            test_loss = accuracy.eval({X: batch_x_test, Y:batch_y_test})
+            train_hist.append(train_loss)
+            test_hist.append(test_loss)
+            print("Training Loss: ", train_loss, end='; ')
+            print("Test Loss: ", test_loss)
+
+
+    plt.plot(range(0, number_epochs, 100), train_hist, 'b', label='Training')
+    plt.plot(range(0, number_epochs, 100), test_hist, 'y', label='Test')
+    plt.title('Comparison of Training MSE and Test MSE')
+    axes = plt.gca()
+    axes.set_ylim([0,100])
+    plt.legend(loc="upper right")
+    plt.show()
+
     # Test model
     # print("Prediction:", pred.eval({X: batch_x_train}))
-    training_output=pred.eval({X: batch_x_train})
+    # training_output=pred.eval({X: batch_x_train})
+    # plt.plot(batch_y_train[0:15], 'ro', label='label')
+    # plt.plot(training_output[0:15], 'x', label='prediction')
+    # plt.ylabel('Labels')
+    # plt.legend(loc="upper right")
+    # plt.title('Comparison of the prediction of the first 15 training set examples')
+    # plt.show()
 
-    plt.plot(batch_y_train[0:500], 'ro', training_output[0:500], 'x')
-    plt.ylabel('Labels')
-    plt.title('Comparison of the prediction of the first 15 training set examples')
-    plt.show()
+    # test_output=pred.eval({X: batch_x_test})
+    # plt.plot(batch_y_test[0:15], 'ro', label='label')
+    # plt.plot(test_output[0:15], 'x', label='prediction')
+    # plt.ylabel('Labels')
+    # plt.legend(loc="upper right")
+    # plt.title('Comparison of the prediction of the first 15 test set examples')
+    # plt.show()
 
-    test_output=pred.eval({X: batch_x_test})
-
-    plt.plot(batch_y_test, 'ro', test_output, 'x')
-    plt.ylabel('Labels')
-    plt.title('Comparison of the prediction of the first 15 test set examples')
-    plt.show()
-
-    test_accuracy=tf.losses.mean_squared_error(batch_y_test,test_output, reduction=tf.losses.Reduction.SUM_OVER_BATCH_SIZE)
-    print("root test accuracy: ", math.sqrt(test_accuracy.eval()))
-    print("num of evaluation: ", num_eval)
-
-
+    accuracy1 = tf.losses.mean_squared_error(Y,pred, reduction=tf.losses.Reduction.SUM_OVER_BATCH_SIZE)
+    print("Final mean squared error: ", accuracy1.eval({X: batch_x_train, Y:batch_y_train}))
+    print("Final mean squared error: ", accuracy1.eval({X: batch_x_test, Y:batch_y_test}))
