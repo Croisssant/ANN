@@ -173,62 +173,66 @@ if (ans == 0):
         print("Accuracy on test set: {}".format(accuracy1.eval({X: batch_x_test})))
 
 elif (ans == 1):
-
-    learning_constant = [0.1 , 0.2, 0.3, 0.4, 0.5]
-    # learning_constant = [0.5 , 0.4, 0.3, 0.2, 0.1]
+    number_epochs = [200, 250, 300, 350, 400, 450]
     best_acc = 0
+    best_chrom = []
 
-    for idx, g in enumerate(learning_constant):
-        accuracy_of_each_fold = []
-        optimizer = tf.train.GradientDescentOptimizer(g).minimize(loss_op)
-        # print the initial weights for each different hyperparam
-        # with tf.Session() as sess:
-        #     sess.run(init)
-        #     print(sess.run(w1))
+    for k in number_epochs:
 
-        print('========== Learning Constant: {} =========='.format(g))
-        for i in range(10):
-            batch_x_alpha = batch_x
-            batch_y_alpha = batch_y
-            l = 0 + (i * 17)
-            j = 17 + (i * 17)
-            testing_fold_x = batch_x[l:j, :]
-            testing_fold_y = batch_y[l:j, :]
+        learning_constant = [0.1 , 0.2, 0.3, 0.4, 0.5]
+        # learning_constant = [0.5 , 0.4, 0.3, 0.2, 0.1]
+        
+        print('=============== No. of Epoch: {} ==============='.format(k))
+        for idx, g in enumerate(learning_constant):
+            accuracy_of_each_fold = []
+            optimizer = tf.train.GradientDescentOptimizer(g).minimize(loss_op)
 
-            if i == 9:
-                testing_fold_x = batch_x[l:, :]
-                testing_fold_y = batch_y[l:, :]
+            print('========== Learning Constant: {} =========='.format(g))
+            for i in range(10):
+                batch_x_alpha = batch_x
+                batch_y_alpha = batch_y
+                l = 0 + (i * 17)
+                j = 17 + (i * 17)
+                testing_fold_x = batch_x[l:j, :]
+                testing_fold_y = batch_y[l:j, :]
 
-            training_fold_x = np.delete(batch_x_alpha, slice(l,j), axis=0)
-            training_fold_y = np.delete(batch_y_alpha, slice(l,j), axis=0)
-            
-            with tf.Session() as sess:
-                sess.run(init)
-                #Training epoch
-                for epoch in range(number_epochs):         
-                    sess.run(optimizer, feed_dict={X:training_fold_x , Y: training_fold_y})
+                if i == 9:
+                    testing_fold_x = batch_x[l:, :]
+                    testing_fold_y = batch_y[l:, :]
+
+                training_fold_x = np.delete(batch_x_alpha, slice(l,j), axis=0)
+                training_fold_y = np.delete(batch_y_alpha, slice(l,j), axis=0)
                 
-                pred = (neural_network) # Apply softmax to logits
+                with tf.Session() as sess:
+                    sess.run(init)
+                    #Training epoch
+                    for epoch in range(k):         
+                        sess.run(optimizer, feed_dict={X:training_fold_x , Y: training_fold_y})
+                    
+                    pred = (neural_network) # Apply softmax to logits
+                    estimated_class=tf.argmax(pred, 1)#+1e-50-1e-50
+                    correct_prediction1 = tf.equal(tf.argmax(pred, 1), tf.argmax(testing_fold_y, 1))
+                    accuracy1 = tf.reduce_mean(tf.cast(correct_prediction1, tf.float32))
+                    print('Accuracy of fold {}: {}'.format(i+1, accuracy1.eval({X: testing_fold_x})))
+                    accuracy_of_each_fold.append(accuracy1.eval({X: testing_fold_x}))
 
-                # accuracy=tf.keras.losses.MSE(pred,Y)
-                # print("Training Accuracy:", accuracy.eval({X: training_fold_x, Y: training_fold_y}))
-                
-                estimated_class=tf.argmax(pred, 1)#+1e-50-1e-50
-                correct_prediction1 = tf.equal(tf.argmax(pred, 1), tf.argmax(testing_fold_y, 1))
-                accuracy1 = tf.reduce_mean(tf.cast(correct_prediction1, tf.float32))
-                print('Accuracy of fold {}: {}'.format(i+1, accuracy1.eval({X: testing_fold_x})))
-                accuracy_of_each_fold.append(accuracy1.eval({X: testing_fold_x}))
+            alpha_avg_acc = np.mean(accuracy_of_each_fold)
+            print("Average accuracy of learning constant {}: {}\n".format(g, alpha_avg_acc))
 
-        alpha_avg_acc = np.mean(accuracy_of_each_fold)
-        print("Average accuracy of learning constant {}: {}\n".format(g, alpha_avg_acc))
+            if alpha_avg_acc > best_acc:
+                best_acc = alpha_avg_acc
+                best_chrom = []
+                best_chrom.append(learning_constant[idx])
+                best_chrom.append(k)
 
-        if alpha_avg_acc > best_acc:
-            best_acc = alpha_avg_acc
-            best_lr = learning_constant[idx]
-            print('=-=-=-=-=-=-=-=-=-=-=')
-            print('The current best average accuracy is {} with learning constant {}.'.format(best_acc, g))
-            print('=-=-=-=-=-=-=-=-=-=-=')
-    print("Best learning rate: ", best_lr)
+                print('=-=-=-=-=-=-=-=-=-=-=')
+                print('The current best average accuracy is {} with learning constant {} and number of epoch {}.'.format(best_acc, g, k))
+                print('=-=-=-=-=-=-=-=-=-=-=\n')
+    
+    print("-------=== Best Hyperparamters ===-------")
+    print('Accuracy obtained = {}'.format(best_acc))
+    print("Learning Rate = {}".format(best_chrom[0]))
+    print("No. of epoch = {}".format(best_chrom[1]))
           
 else:
     print('Please select a valid option')
