@@ -43,8 +43,8 @@ n_input = 13
 n_output = 3 # Still finding a way to change output node to 3
 
 #Learning parameters
-learning_constant = 0.1
-number_epochs = 250
+learning_constant = 0.5
+number_epochs = 450
 batch_size = 1000
 
 #Defining the input and the output
@@ -153,18 +153,12 @@ if (ans == 0):
         print("Accuracy:", accuracy.eval({X: batch_x_train, Y: batch_y_train}))
         #tf.keras.evaluate(pred,batch_x)
 
-        # print("Prediction:", pred.eval({X: batch_x_train}))
-        # train_output=neural_network.eval({X: batch_x_train})
-        # plt.plot(np.argmax(batch_y_train[0:25], 1) + 1, 'ro', np.argmax(train_output[0:25], 1) + 1, 'x') 
-        # plt.ylabel('Class')
-        # plt.title('Comparison of the prediction of the first 25 training set examples')
-        # plt.show()
-
-        # test_output=neural_network.eval({X: batch_x_test})
-        # plt.plot(np.argmax(batch_y_test[0:25], 1) + 1, 'ro', np.argmax(test_output[0:25], 1) + 1, 'x') 
-        # plt.ylabel('Class')
-        # plt.title('Comparison of the prediction of the first 25 test set examples')
-        # plt.show()
+        print("Prediction:", pred.eval({X: batch_x_train}))
+        test_output=neural_network.eval({X: batch_x_test})
+        plt.plot(np.argmax(batch_y_test[0:25], 1) + 1, 'ro', np.argmax(test_output[0:25], 1) + 1, 'x') 
+        plt.ylabel('Class')
+        plt.title('Comparison of the prediction of the first 25 test set examples')
+        plt.show()
 
         estimated_class=tf.argmax(pred, 1)#+1e-50-1e-50
         correct_prediction1 = tf.equal(tf.argmax(pred, 1), tf.argmax(batch_y_test, 1))
